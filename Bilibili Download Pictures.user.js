@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Bilibili Download Pictures
 // @name:zh-CN   下载Bilibili动态页面图片
-// @version      0.6.1
+// @version      0.6.1_custom
 // @description  Download pictures from bilibili timeline
 // @description:zh-CN 下载“Bilibili动态”时间线页面的图片
 // @author       OWENDSWANG
@@ -13,6 +13,8 @@
 // @match        https://space.bilibili.com/*/dynamic*
 // @grant        GM_download
 // @namespace https://greasyfork.org/users/738244
+// @require      https://cdn.staticfile.org/jszip/3.7.1/jszip.min.js
+// @require      https://cdn.staticfile.org/FileSaver.js/1.3.2/FileSaver.min.js
 // ==/UserScript==
 
 (function() {
@@ -67,7 +69,10 @@
                 event.preventDefault();
                 var content = this.closest('div.bili-dyn-item__main');
                 var list = content.querySelectorAll('div.bili-album__preview__picture__img');
-                if (list.length > 0) {
+                if (list.length > 1) {
+                    let zip = new JSZip();
+                    let zipName = document.querySelector(".bili-dyn-content__orig__major").childNodes[0].attributes["dyn-id"].value;
+                    const downloadImage = async url => await fetch(url).then(res => res.blob()).then(data => data);
                     for (var j = 0; j < list.length; j++) {
                         var imgUrl = list[j].style.backgroundImage.split(/"|@/)[1];
                         if (imgUrl.startsWith('//')) {
@@ -76,8 +81,21 @@
                         var imgName = imgUrl.split('/')[imgUrl.split('/').length - 1];
                         // console.log(imgUrl);
                         // console.log(imgName);
-                        GM_download(imgUrl, imgName);
+                        // GM_download(imgUrl, imgName);
+                        let imgData = downloadImage(imgUrl);
+                        zip.file(imgName, imgData);
                     }
+                    zip.generateAsync({type:"blob"}).then(content => {
+                        saveAs(content, zipName + ".zip")
+                        text.textContent += ' √';
+                    })
+                } else if (list.length == 1) {
+                    let imgUrl = list[0].style.backgroundImage.split(/"|@/)[1];
+                    if (imgUrl.startsWith('//')) {
+                            imgUrl = 'https:' + imgUrl;
+                    }
+                    let imgName = imgUrl.split('/')[imgUrl.split('/').length - 1];
+                    GM_download(imgUrl, imgName);
                 }
             });
         }
